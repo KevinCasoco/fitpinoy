@@ -64,6 +64,7 @@
 <!-- Script for Calendar -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.8/index.global.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.8/index.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -123,7 +124,14 @@
     async function saveNotes() {
         const notes = document.getElementById('notes').value;
         await setDoc(doc(db, 'notes', 'myNotes'), { content: notes });
-        alert('Notes saved to Firebase!');
+        // alert('Notes saved to Firebase!');
+        Swal.fire({
+            icon: 'success',
+            title: 'Saved!',
+            text: 'Notes saved to Firebase',
+            timer: 1500,
+            showConfirmButton: false
+        });
     }
 
     async function loadNotes() {
@@ -137,8 +145,18 @@
     async function addWorkout() {
         const workout = document.getElementById('workout').value;
         if (!workout) return;
+
         await addDoc(collection(db, 'workouts'), { name: workout, done: false });
+
         document.getElementById('workout').value = '';
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Workout Added!',
+            timer: 3000,
+            showConfirmButton: false
+        });
+
         loadWorkouts();
     }
 
@@ -193,10 +211,29 @@
     async function addEvent() {
         const date = document.getElementById('eventDate').value;
         const text = document.getElementById('eventText').value;
-        if (!date || !text) return;
+
+        if (!date || !text) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Oops...',
+                text: 'Please fill up the required fields.'
+            });
+            return;
+        }
+
         await addDoc(collection(db, 'events'), { date, text });
+
         document.getElementById('eventDate').value = '';
         document.getElementById('eventText').value = '';
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Event Added!',
+            text: 'Your event was saved successfully',
+            timer: 3000,
+            showConfirmButton: false
+        });
+
         loadEvents();
     }
 
