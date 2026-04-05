@@ -3,18 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Workout Tracker Firebase</title>
+<title>FitPinoyHub</title>
 <style>
-    body { font-family: Arial; background: #f5f5f5; margin:0; }
-    header { background: #4CAF50; color: white; text-align: center; padding:1rem;}
-    .container { max-width: 900px; margin:20px auto; padding:20px; background:white; border-radius:8px;}
-    h2{ margin-top:0; }
-    ul{ list-style:none; padding:0; }
-    li{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #ddd;}
-    button{ padding:5px 10px; cursor:pointer; }
-    input, textarea{ width:100%; padding:8px; margin:5px 0; border-radius:4px; border:1px solid #ccc;}
-    .done { text-decoration:line-through; color:gray; }
+    body {
+    font-family: Arial;
+    background: #f5f5f5;
+    margin: 0;
+    }
+    header {
+        background: #4CAF50;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+    }
+    .container {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+    }
+    h2 {
+        margin-top: 0;
+    }
+    ul {
+        list-style: none;
+        padding: 0;
+    }
+    li {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #ddd;
+    }
+    button {
+        padding: 5px 10px;
+        cursor: pointer;
+    }
+    input,
+    textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+    .done {
+        text-decoration: line-through;
+        color: gray;
+    }
+    /* Calendar styling */
+    #calendar {
+        max-width: 900px;
+        margin: 20px auto;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+    }
 </style>
+<!-- Script for Calendar -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.8/index.global.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.8/index.min.css" rel="stylesheet">
 </head>
 <body>
 
@@ -23,20 +72,27 @@
 </header>
 
 <div class="container">
+    <!-- Notes Section -->
     <h2>Workout Notes</h2>
     <textarea id="notes" placeholder="Write your notes..."></textarea>
     <button onclick="saveNotes()">Save Notes</button>
 
+    <!-- Workouts Section -->
     <h2>Workout List</h2>
     <input type="text" id="workout" placeholder="Add workout">
     <button onclick="addWorkout()">Add</button>
     <ul id="workoutList"></ul>
 
+    <!-- Events Section -->
     <h2>Events</h2>
     <input type="date" id="eventDate">
     <input type="text" id="eventText" placeholder="Event description">
     <button onclick="addEvent()">Add Event</button>
     <ul id="eventList"></ul>
+
+    <!-- Calendar Section -->
+    <h2>Calendar</h2>
+    <div id="calendar"></div>
 </div>
 
 <!-- Use module type for ES Modules -->
@@ -73,7 +129,7 @@
     async function loadNotes() {
         const docSnap = await getDoc(doc(db, 'notes', 'myNotes'));
         if (docSnap.exists()) {
-        document.getElementById('notes').value = docSnap.data().content;
+            document.getElementById('notes').value = docSnap.data().content;
         }
     }
 
@@ -103,20 +159,37 @@
         const list = document.getElementById('workoutList');
         list.innerHTML = '';
         snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const li = document.createElement('li');
-        li.innerHTML = `
-            <span class="${data.done ? 'done' : ''}">${data.name}</span>
-            <div>
-            <button onclick="toggleDone('${docSnap.id}', ${data.done})">${data.done ? 'Undo' : 'Done'}</button>
-            <button onclick="deleteWorkout('${docSnap.id}')">Delete</button>
-            </div>
-        `;
-        list.appendChild(li);
+            const data = docSnap.data();
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span class="${data.done ? 'done' : ''}">${data.name}</span>
+                <div>
+                    <button onclick="toggleDone('${docSnap.id}', ${data.done})">${data.done ? 'Undo' : 'Done'}</button>
+                    <button onclick="deleteWorkout('${docSnap.id}')">Delete</button>
+                </div>
+            `;
+            list.appendChild(li);
         });
     }
 
-    // ---------------- Events ----------------
+    // ---------------- Events & Calendar ----------------
+    let calendar; 
+
+    function renderCalendar(events = []) {
+        const calendarEl = document.getElementById('calendar');
+        if (!calendar) {
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 600,
+                events: events
+            });
+            calendar.render();
+        } else {
+            calendar.removeAllEvents();
+            events.forEach(event => calendar.addEvent(event));
+        }
+    }
+
     async function addEvent() {
         const date = document.getElementById('eventDate').value;
         const text = document.getElementById('eventText').value;
@@ -132,15 +205,26 @@
         const snapshot = await getDocs(q);
         const list = document.getElementById('eventList');
         list.innerHTML = '';
+        const calendarEvents = [];
+
         snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const li = document.createElement('li');
-        li.textContent = `${data.date}: ${data.text}`;
-        list.appendChild(li);
+            const data = docSnap.data();
+
+            // Populate list
+            const li = document.createElement('li');
+            li.textContent = `${data.date}: ${data.text}`;
+            list.appendChild(li);
+
+            // Populate calendar
+            calendarEvents.push({
+                title: data.text,
+                start: data.date
+            });
         });
+
+        renderCalendar(calendarEvents);
     }
 
-    // Load data on page load
     document.addEventListener('DOMContentLoaded', () => {
         loadNotes();
         loadWorkouts();
