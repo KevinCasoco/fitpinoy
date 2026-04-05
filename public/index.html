@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Tracker Firebase</title>
+<style>
+    body { font-family: Arial; background: #f5f5f5; margin:0; }
+    header { background: #4CAF50; color: white; text-align: center; padding:1rem;}
+    .container { max-width: 900px; margin:20px auto; padding:20px; background:white; border-radius:8px;}
+    h2{ margin-top:0; }
+    ul{ list-style:none; padding:0; }
+    li{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #ddd;}
+    button{ padding:5px 10px; cursor:pointer; }
+    input, textarea{ width:100%; padding:8px; margin:5px 0; border-radius:4px; border:1px solid #ccc;}
+    .done { text-decoration:line-through; color:gray; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>FitPinoy</h1>
+</header>
+
+<div class="container">
+    <h2>Workout Notes</h2>
+    <textarea id="notes" placeholder="Write your notes..."></textarea>
+    <button onclick="saveNotes()">Save Notes</button>
+
+    <h2>Workout List</h2>
+    <input type="text" id="workout" placeholder="Add workout">
+    <button onclick="addWorkout()">Add</button>
+    <ul id="workoutList"></ul>
+
+    <h2>Events</h2>
+    <input type="date" id="eventDate">
+    <input type="text" id="eventText" placeholder="Event description">
+    <button onclick="addEvent()">Add Event</button>
+    <ul id="eventList"></ul>
+</div>
+
+<!-- Use module type for ES Modules -->
+<script type="module">
+    // Import Firebase modules from CDN
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, addDoc, getDocs, updateDoc, deleteDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
+
+    // Firebase config
+   const firebaseConfig = {
+        apiKey: "AIzaSyAzaUFeot6rvmK2yOsRY5uktmXky45ua2k",
+        authDomain: "workouttracker-ffa75.firebaseapp.com",
+        databaseURL: "https://workouttracker-ffa75-default-rtdb.firebaseio.com",
+        projectId: "workouttracker-ffa75",
+        storageBucket: "workouttracker-ffa75.firebasestorage.app",
+        messagingSenderId: "149587278276",
+        appId: "1:149587278276:web:2ba54910381f93c1ddcc91",
+        measurementId: "G-R0JTZYJCTT"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const analytics = getAnalytics(app);
+
+    // ---------------- Notes ----------------
+    async function saveNotes() {
+        const notes = document.getElementById('notes').value;
+        await setDoc(doc(db, 'notes', 'myNotes'), { content: notes });
+        alert('Notes saved to Firebase!');
+    }
+
+    async function loadNotes() {
+        const docSnap = await getDoc(doc(db, 'notes', 'myNotes'));
+        if (docSnap.exists()) {
+        document.getElementById('notes').value = docSnap.data().content;
+        }
+    }
+
+    // ---------------- Workouts ----------------
+    async function addWorkout() {
+        const workout = document.getElementById('workout').value;
+        if (!workout) return;
+        await addDoc(collection(db, 'workouts'), { name: workout, done: false });
+        document.getElementById('workout').value = '';
+        loadWorkouts();
+    }
+
+    async function toggleDone(id, done) {
+        const docRef = doc(db, 'workouts', id);
+        await updateDoc(docRef, { done: !done });
+        loadWorkouts();
+    }
+
+    async function deleteWorkout(id) {
+        await deleteDoc(doc(db, 'workouts', id));
+        loadWorkouts();
+    }
+
+    async function loadWorkouts() {
+        const q = query(collection(db, 'workouts'));
+        const snapshot = await getDocs(q);
+        const list = document.getElementById('workoutList');
+        list.innerHTML = '';
+        snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span class="${data.done ? 'done' : ''}">${data.name}</span>
+            <div>
+            <button onclick="toggleDone('${docSnap.id}', ${data.done})">${data.done ? 'Undo' : 'Done'}</button>
+            <button onclick="deleteWorkout('${docSnap.id}')">Delete</button>
+            </div>
+        `;
+        list.appendChild(li);
+        });
+    }
+
+    // ---------------- Events ----------------
+    async function addEvent() {
+        const date = document.getElementById('eventDate').value;
+        const text = document.getElementById('eventText').value;
+        if (!date || !text) return;
+        await addDoc(collection(db, 'events'), { date, text });
+        document.getElementById('eventDate').value = '';
+        document.getElementById('eventText').value = '';
+        loadEvents();
+    }
+
+    async function loadEvents() {
+        const q = query(collection(db, 'events'), orderBy('date'));
+        const snapshot = await getDocs(q);
+        const list = document.getElementById('eventList');
+        list.innerHTML = '';
+        snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement('li');
+        li.textContent = `${data.date}: ${data.text}`;
+        list.appendChild(li);
+        });
+    }
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadNotes();
+        loadWorkouts();
+        loadEvents();
+    });
+
+    // Make functions global to use in onclick
+    window.addWorkout = addWorkout;
+    window.toggleDone = toggleDone;
+    window.deleteWorkout = deleteWorkout;
+    window.addEvent = addEvent;
+    window.saveNotes = saveNotes;
+</script>
+
+</body>
+</html>
